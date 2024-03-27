@@ -1,7 +1,12 @@
 '''
    navier_2dfocs.py
 
-   2D flow over a cylinder. Based on `navier_3dfocs.cpp'.
+   2D flow over a cylinder.
+
+   Example run with kinematic viscosity of 0.001 and visualization:
+   python navier_2dfocs.py -kinvis 0.001 -vis
+
+   paraview files will output in file '2dfoc'
 '''
 
 from mfem.par import intArray, doubleArray
@@ -23,11 +28,11 @@ def run(ser_ref_levels=0,
         dt = 1e-3,
         pa = True,
         ni = False,
-        visualization = True,
-        checkres = False,
+        visualization = False,
         numba = True):
     
     mesh = mfem.Mesh("rect-cylinder.msh")
+    # mesh = mfem.Mesh("../../data/inline-quad.mesh",1,1)
     
     for i in range(ser_ref_levels):
         mesh.UniformRefinement()
@@ -59,7 +64,6 @@ def run(ser_ref_levels=0,
 
     u_ic.ProjectCoefficient(u_excoeff)
 
-
     attr = intArray(pmesh.bdr_attributes.Max())
     attr[0] = 1 #inlet
     attr[4] = 1 #cylinder
@@ -76,24 +80,25 @@ def run(ser_ref_levels=0,
     
     step = 0
 
-    pvdc = mfem.ParaViewDataCollection("2dfoc", pmesh)
-    pvdc.SetDataFormat(mfem.VTKFormat_BINARY32)
-    pvdc.SetHighOrderOutput(True)
-    pvdc.SetLevelsOfDetail(order)
-    pvdc.SetCycle(0)
-    pvdc.SetTime(time)
-    pvdc.RegisterField("velocity", u_gf)
-    pvdc.RegisterField("pressure", p_gf)
-    pvdc.Save()
+    if visualization:
+         pvdc = mfem.ParaViewDataCollection("2dfoc", pmesh)
+         pvdc.SetDataFormat(mfem.VTKFormat_BINARY32)
+         pvdc.SetHighOrderOutput(True)
+         pvdc.SetLevelsOfDetail(order)
+         pvdc.SetCycle(0)
+         pvdc.SetTime(time)
+         pvdc.RegisterField("velocity", u_gf)
+         pvdc.RegisterField("pressure", p_gf)
+         pvdc.Save()
 
     while last_step == False:
         if time + dt >= t_final - dt/2:
             last_step = True
 
         
-        time = flowsolver.Step(time, dt, step) 
+        time = flowsolver.Step(time, dt, step) #t should update in here
 
-        if step % 10 == 0:
+        if visualization and step % 10 == 0:
             pvdc.SetCycle(step)
             pvdc.SetTime(time)
             pvdc.Save()
@@ -120,6 +125,9 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--order',
                         action='store', default=4, type=int,
                         help="Order (degree) of the finite elements.")
+    parser.add_argument('-kinvis', '--kinvis',
+                        action='store', default=0.001, type=float,
+                        help="Kinematic viscosity.")                    
     parser.add_argument('-dt', '--time-step',
                         action='store', default=1e-3, type=float,
                         help="Time step.")
@@ -135,30 +143,22 @@ if __name__ == "__main__":
     parser.add_argument('-vis', '--visualization',
                         action='store_true',
                         help='Enable GLVis visualization')
-    parser.add_argument('-cr', '--checkresult',
-                        action='store_true',
-                        help="Enable or disable checking of the result. Returns -1 on failure.")
     parser.add_argument("-n", "--numba",
                         default=1, action='store', type=int,
                         help="Use Number compiled coefficient")
    
-   #NOTE: There is no argument to change kinvis, but this is also true in c++ version
-    
     args = parser.parse_args()
     parser.print_options(args)
 
-    # meshfile = expanduser(
-    #     join(os.path.dirname(__file__), '..', '..', 'data', args.mesh))
     numba = (args.numba == 1)
 
     run(ser_ref_levels = args.refine_serial,
         order=args.order,
-        kinvis=0.001,
+        kinvis=args.kinvis,
         t_final=args.final_time,
         dt=args.time_step,
         pa=True,
         ni=False,
-        # visualization=args.visualization,
-        checkres=False,
+        visualization=args.visualization,
         numba=numba)
 
