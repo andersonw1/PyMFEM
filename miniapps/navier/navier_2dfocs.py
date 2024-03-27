@@ -33,7 +33,8 @@ def run(ser_ref_levels=0,
     
     mesh = mfem.Mesh("rect-cylinder.msh")
     # mesh = mfem.Mesh("../../data/inline-quad.mesh",1,1)
-    
+
+    #refine the mesh by splitting each element
     for i in range(ser_ref_levels):
         mesh.UniformRefinement()
 
@@ -42,10 +43,14 @@ def run(ser_ref_levels=0,
     
     pmesh = mfem.ParMesh(MPI.COMM_WORLD, mesh)
 
+    #define navier solver object
     flowsolver = mfem.navier_solver.NavierSolver(pmesh,order,kinvis)
     flowsolver.EnablePA(pa)
 
-    u_ic = flowsolver.GetCurrentVelocity()  
+           
+    #initial condition
+    u_ic = flowsolver.GetCurrentVelocity() 
+    #initial definition of time-dependent velocity field 
     if numba:
         @mfem.jit.vector(vdim=pmesh.Dimension(),td = True, interface = 'c++')
         def u_excoeff(x,t,u):
@@ -64,6 +69,7 @@ def run(ser_ref_levels=0,
 
     u_ic.ProjectCoefficient(u_excoeff)
 
+    #define boundaries. inlet/cylinder are dirichlet, other boundaries are natural
     attr = intArray(pmesh.bdr_attributes.Max())
     attr[0] = 1 #inlet
     attr[4] = 1 #cylinder
@@ -96,7 +102,7 @@ def run(ser_ref_levels=0,
             last_step = True
 
         
-        time = flowsolver.Step(time, dt, step) #t should update in here
+        time = flowsolver.Step(time, dt, step) #time stepping
 
         if visualization and step % 10 == 0:
             pvdc.SetCycle(step)
@@ -117,7 +123,7 @@ def run(ser_ref_levels=0,
 if __name__ == "__main__":
     from mfem.common.arg_parser import ArgParser
 
-    parser = ArgParser(description='navier_mms (translated from miniapps/navier/navier_mms.cpp)')
+    parser = ArgParser(description='navier_2dfoc, flow over cylinder in 2D')
 
     parser.add_argument('-rs', '--refine-serial',
                         action='store', default=0, type=int,
