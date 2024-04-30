@@ -1,15 +1,15 @@
 '''
    navier_2dfocs_correction.py
 
-  This code is an outline of how I think it would be ideal 
+  This code is an outline of how we may be able 
   to run the mfem simulation with solver in the loop. 
   Essentially, the issue is that "navier_2dfocs_restart.py"
     reinitializes the mesh and flowsolver every time we call the solver, 
     which introduces a lot of unnecessary cost.
-  Here, we instead initialize the flowsolver and mesh one time.
-    We then call the "step" function to advance the simulation
+  Here, we instead initialize the flowsolver and mesh only once.
+    We then call the function "Step"  to advance the simulation
     one timestep. 
-    After the timestep, we write save current velocity as an npy file
+    After the timestep, we save the current velocity as an npy file
     so that we can correct it with the NN. The corrected velocity is then
     assigned to the solver and we step again.
 '''
@@ -111,7 +111,9 @@ if visualization:
         pvdc.RegisterField("pressure", p_gf)
         pvdc.Save()
 
-#coords gives numpy array of how mesh nodes are distributed
+# 'coords' is a numpy array of the nodes on each core.
+# first half the array is the x-coords
+# second half is the y-coords
 nodes = mfem.ParGridFunction(u_gf)
 pmesh.GetNodes(nodes)
 coords =  nodes.GetDataArray()
@@ -129,7 +131,7 @@ while last_step == False:
     #save the velocity as a pargridfunction
     u_gf.Save(sol_name_v, 8)
 
-    #define new pargridfunction of current velocities(Not sure if necessary)
+    #define new pargridfunction of current velocities (Not sure if necessary)
     vel_gf = mfem.ParGridFunction(pmesh,sol_name_v)
 
     #get numpy array of current velocities
