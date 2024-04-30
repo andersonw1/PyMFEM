@@ -5,7 +5,7 @@
   to run the mfem simulation with solver in the loop. 
   Essentially, the issue is that "navier_2dfocs_restart.py"
     reinitializes the mesh and flowsolver every time we call the solver, 
-    which introduces a lot of uneccesary cost.
+    which introduces a lot of unnecessary cost.
   Here, we instead initialize the flowsolver and mesh one time.
     We then call the "step" function to advance the simulation
     one timestep. 
