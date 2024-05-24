@@ -18,9 +18,11 @@ KINVIS=(0.001 0.005 0.01 0.05 0.1) #1/Reynold's number
 echo $LSB_JOBINDEX
 echo $LSB_JOBINDEX -1
 
-jsrun -p 8 python navier_2dfocs_generatedata.py -tf 8  -res 0 ${KINVIS[$LSB_JOBINDEX-1]}
-jsrun -p 8 python navier_2dfocs_generatedata.py -tf 8  -res 1 ${KINVIS[$LSB_JOBINDEX-1]}
+#need to figure out how to set k_invis for each loop value
 
-jsrun -p 8 python single_sim.py -tf 8  -res 0 ${KINVIS[$LSB_JOBINDEX-1]}
-jsrun -p 8 python single_sim.py -tf 8  -res 1 ${KINVIS[$LSB_JOBINDEX-1]}
+jsrun -p 8 python navier_2dfocs_generatedata.py -tf 8  -res 0 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
+jsrun -p 8 python navier_2dfocs_generatedata.py -tf 8  -res 1 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
+
+jsrun -p 8 python single_sim.py -tf 8  -res 0 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
+jsrun -p 8 python single_sim.py -tf 8  -res 1 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
 
