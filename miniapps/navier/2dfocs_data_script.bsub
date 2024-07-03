@@ -3,26 +3,38 @@
 #BSUB -nnodes 1
 
 #BSUB -J 2dfocs_data
-#BSUB -W 120:00
-#BSUB -e 2dfocs_data_err.txt
-#BSUB -o 2dfocs_data_out.txt
+#BSUB -W 10
+#BSUB -e 2dfocs_data_err.out
+#BSUB -o 2dfocs_data_out.out
 #BSUB -q pbatch
 
-cd /usr/workspace/zeroml/SoftwareStack/software-stack 
-source activate-lassen
+# Activate shared conda environment on Lassen
+source /usr/workspace/zeroml/SoftwareStack/software-stack/activate-lassen
 
-cd tmp_py_mfem/PyMFEM/miniapps/navier
 
-KINVIS=(0.001 0.005 0.01 0.05 0.1) #1/Reynold's number
+# Kinematic viscosity (1/Reynold's number)
+declare -a KINVIS=("0.001" "0.0005" "0.0001","0.00005","0.00001")
+#declare -a KINVIS=("0.001")
 
-echo $LSB_JOBINDEX
-echo $LSB_JOBINDEX -1
+# Simultation resolution (0 for low res, 1 for hi res)
+declare -a RESOLUTION=("0" "1")
+#declare -a RESOLUTION=("0")
 
-#need to figure out how to set k_invis for each loop value
+# Set number of processes to use during simulation
+NUMPROCS=40
 
-jsrun -p 8 python navier_2dfocs_generatedata.py -tf 8  -res 0 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
-jsrun -p 8 python navier_2dfocs_generatedata.py -tf 8  -res 1 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
-
-jsrun -p 8 python single_sim.py -tf 8  -res 0 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
-jsrun -p 8 python single_sim.py -tf 8  -res 1 -kinvis loop_value ${KINVIS[$LSB_JOBINDEX-1]}
+echo Running MFEM simulations and processing data...
+for s in "${RESOLUTION[@]}"
+do
+  for k in "${KINVIS[@]}"
+  do
+    # Run simulation at given resolution and viscosity
+    echo Running simulation with kinvis ${k} and resolution ${s}
+    jsrun -p $NUMPROCS python navier_2dfocs_generatedata.py -tf 0.1 -res $s -kinvis $k --skipsteps 100 -rs 2 --order 1 -dt 0.001
+    # Process simulation data at same resolution and viscosity (needs to run AFTER previous line)
+    echo Processing simulation data with kinvis ${k} and resolution ${s}
+    jsrun -p 1 python navier_2dfocs_extractdata.py --numprocs $NUMPROCS --resolution $s --kinvis $k
+  done
+done
+echo Finished
 
