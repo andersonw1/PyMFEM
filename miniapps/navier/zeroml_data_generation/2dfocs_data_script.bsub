@@ -30,7 +30,7 @@ do
   do
     # Run simulation at given resolution and viscosity
     echo Running simulation with kinvis ${k} and resolution ${s}
-    jsrun -p $NUMPROCS python navier_2dfocs_generatedata.py -tf 0.1 -res $s -kinvis $k --skipsteps 100 -rs 2 --order 1 -dt 0.001
+    jsrun -p $NUMPROCS python navier_2dfocs_generatedata.py -tf 0.5 -res $s -kinvis $k --skipsteps 5000 -rs 2 --order 1 -dt 0.001
     # Process simulation data at same resolution and viscosity (needs to run AFTER previous line)
     echo Processing simulation data with kinvis ${k} and resolution ${s}
     jsrun -p 1 python navier_2dfocs_extractdata.py --numprocs $NUMPROCS --resolution $s --kinvis $k
