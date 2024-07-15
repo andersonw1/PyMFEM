@@ -19,6 +19,7 @@ def extract_data(kinvis, resolution, numprocs, dirname):
     halfpt = []
     velsx = []
     velsy = []
+    pressure = []
     
     for i in range(numprocs):
         smyid = '{:0>6d}'.format(i)
