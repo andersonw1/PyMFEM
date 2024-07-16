@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Set name of experiment (file paths will update accordingly)
+EXPERIMENT_NAME="2dfocs-data"
+# Set log directory
+MY_LOG_DIR="/usr/workspace/$USER/mfem-experiments/$EXPERIMENT_NAME/logs"
+# Set output directory name based on current date
+OUTPUT_DIRNAME="output/`date +"%Y-%m-%d"`"
+# Create log directories if they don't exist
+mkdir -p $MY_LOG_DIR
+mkdir -p $MY_LOG_DIR/$OUTPUT_DIRNAME
+
+# Kinematic viscosity (1/Reynold's number)
+declare -a KINVIS=("0.001" "0.005" "0.01" "0.05" "0.1")
+#declare -a KINVIS=("0.02")
+#declare -a KINVIS=("0.005" "0.01" "0.05" "0.1")
+# Simultation resolution (0 for low res, otherwise hi res)
+declare -a RESOLUTION=("0" "1")
+#declare -a RESOLUTION=("0")
+
+###########################
+
+MYBANK="ml4ss"
+MYTIME=30 # Job time in minutes
+
+echo $MY_LOG_DIR
+
+NUMPROCS=1
+FINALTIME=1.0 #8
+SKIPSTEPS=500
+DELTA_T=0.001
+
+# Activate shared conda environment on Lassen
+#source /usr/workspace/zeroml/SoftwareStack/software-stack/activate-lassen
+
+echo Running MFEM simulations and processing data...
+echo Saving output logs to $MY_LOG_DIR
+for s in "${RESOLUTION[@]}"
+do
+  for k in "${KINVIS[@]}"
+  do
+    # Run simulation at given resolution and viscosity
+    echo Running simulation with kinvis ${k} and resolution ${s}
+    bsub -J $EXPERIMENT_NAME-generate-$s-$k -G $MYBANK -W $MYTIME -e $MY_LOG_DIR/$OUTPUT_DIRNAME/$EXPERIMENT_NAME-%J.err -o $MY_LOG_DIR/$OUTPUT_DIRNAME/$EXPERIMENT_NAME-%J.out python navier_2dfocs_generatedata.py -tf $FINALTIME -res $s -kinvis $k -dt $DELTA_T -rs 2 --order 1
+    # Process simulation data at same resolution and viscosity (needs to run AFTER previous line)
+    echo Processing simulation data with kinvis ${k} and resolution ${s}
+    bsub -J $EXPERIMENT_NAME-extract -G $MYBANK -W $MYTIME -w "ended($EXPERIMENT_NAME-generate-$s-$k)" -e $MY_LOG_DIR/$OUTPUT_DIRNAME/$EXPERIMENT_NAME-%J.err -o $MY_LOG_DIR/$OUTPUT_DIRNAME/$EXPERIMENT_NAME-%J.out python navier_2dfocs_extractdata.py --numprocs $NUMPROCS --resolution $s --kinvis $k
+    #bsub -J $EXPERIMENT_NAME-extract -G $MYBANK -W $MYTIME -e $MY_LOG_DIR/$OUTPUT_DIRNAME/$EXPERIMENT_NAME-%J.err -o $MY_LOG_DIR/$OUTPUT_DIRNAME/$EXPERIMENT_NAME-%J.out python navier_2dfocs_extractdata.py --numprocs $NUMPROCS --resolution $s --kinvis $k
+  done
+done
+echo Finished
